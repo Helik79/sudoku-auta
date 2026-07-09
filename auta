@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dopravní Sudoku 4x4 pro kluky</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #3e3e3e;
+            background-image: 
+                linear-gradient(90deg, transparent 47%, #ffffff 50%, transparent 53%),
+                linear-gradient(transparent 47%, rgba(255,255,255,0.1) 50%, transparent 53%);
+            background-size: 80px 120px, 120px 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            user-select: none;
+        }
+
+        h1 {
+            color: #ffffff;
+            text-shadow: 3px 3px 0px #0288d1, 5px 5px 0px rgba(0,0,0,0.3);
+            margin-bottom: 10px;
+        }
+
+        #controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            background: rgba(30, 30, 30, 0.85);
+            padding: 10px 20px;
+            border-radius: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 2px solid #0288d1;
+        }
+
+        button {
+            background-color: #0288d1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.2s;
+            box-shadow: 0 4px 0 #01579b;
+        }
+
+        button:hover {
+            background-color: #03a9f4;
+        }
+
+        button:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        #check-btn {
+            background-color: #2e7d32;
+            box-shadow: 0 4px 0 #1b5e20;
+        }
+        #check-btn:hover { background-color: #4caf50; }
+
+        #timer {
+            font-size: 20px;
+            font-weight: bold;
+            color: #03a9f4;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        #game-container {
+            display: flex;
+            gap: 30px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 25px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            border: 4px solid #b0bec5;
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(4, 85px);
+            grid-template-rows: repeat(4, 85px);
+            gap: 8px;
+            background-color: #78909c;
+            padding: 8px;
+            border-radius: 10px;
+        }
+
+        .cell {
+            background-color: #fff;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            overflow: hidden;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #cfd8dc;
+        }
+
+        .cell img, .palette-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .cell.fixed {
+            background-color: #b0bec5;
+            cursor: not-allowed;
+        }
+
+        #palette {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .palette-item {
+            width: 85px;
+            height: 85px;
+            background-color: #fff;
+            border: 3px solid #0288d1;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-sizing: border-box;
+            overflow: hidden;
+            padding: 8px;
+        }
+
+        .palette-item:hover {
+            transform: scale(1.05);
+            background-color: #e1f5fe;
+        }
+
+        .palette-item.selected {
+            background-color: #0288d1;
+            border-color: #01579b;
+        }
+        
+        .palette-item.eraser {
+            font-size: 13px;
+            font-weight: bold;
+            background-color: #ffccbc;
+            border-color: #d84315;
+            color: #c62828;
+            text-align: center;
+            height: 50px;
+        }
+
+        #msg {
+            margin-top: 15px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffffff;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+            height: 25px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🚨 Mini Závod: Sudoku 4x4 🚜</h1>
+
+    <div id="controls">
+        <button id="start-btn" onclick="startGame()">▶ Start / Reset</button>
+        <div id="timer">Čas: 00:00</div>
+        <button id="check-btn" onclick="checkSolution()" style="display:none;">👁 Zkontrolovat</button>
+    </div>
+
+    <div id="game-container" style="display: none;">
+        <div id="grid"></div>
+        <div id="palette"></div>
+    </div>
+
+    <div id="msg">Klikni na Start a seřaď 4 autíčka do řad!</div>
+
+    <script>
+        const symbols = {
+            0: "",
+             1: "https://freesvg.org/img/Gerald_G_Formula_One_Car.png",       // Závoďák
+            2: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ07xKFJIAGnyx8mZyLzk0QN05ElaPxOfAI8N5UCB5CMQ&s=10",     // Policie
+            3: "https://www.svgheart.com/wp-content/uploads/2021/11/fire-truck-emergency-vehicle-firefighter-free-svg-file-SvgHeart.Com-2.png",    // Hasiči
+            4: "https://www.svgheart.com/wp-content/uploads/2021/11/tractor-farm-vehicle-free-svg-file-SvgHeart.Com.png",        // Traktor
+           
+        };
+
+        const levels = [
+            {
+                solution: [[1,2,3,4],[3,4,1,2],[2,1,4,3],[4,3,2,1]],
+                start:    [[1,0,3,0],[3,0,0,2],[0,1,4,0],[4,0,2,1]]
+            },
+            {
+                solution: [[4,3,2,1],[1,2,3,4],[3,4,1,2],[2,1,4,3]],
+                start:    [[4,3,0,1],[0,2,3,0],[3,0,1,0],[2,1,0,3]]
+            },
+            {
+                solution: [[2,4,1,3],[1,3,2,4],[4,2,3,1],[3,1,4,2]],
+                start:    [[2,0,1,3],[0,3,2,0],[4,2,0,0],[0,1,4,2]]
+            },
+            {
+                solution: [[3,1,4,2],[4,2,3,1],[1,3,2,4],[2,4,1,3]],
+                start:    [[3,1,0,0],[0,2,3,1],[1,3,2,0],[0,0,1,3]]
+            },
+            {
+                solution: [[1,4,2,3],[2,3,1,4],[4,1,3,2],[3,2,4,1]],
+                start:    [[0,4,2,3],[2,0,1,0],[4,1,0,2],[3,2,4,0]]
+            },
+            {
+                solution: [[4,1,3,2],[2,3,4,1],[1,4,2,3],[3,2,1,4]],
+                start:    [[4,0,3,2],[2,3,0,0],[0,4,2,3],[3,2,0,4]]
+            },
+            {
+                solution: [[2,3,4,1],[4,1,2,3],[1,4,3,2],[3,2,1,4]],
+                start:    [[2,0,4,1],[4,1,0,0],[0,4,3,2],[3,2,0,4]]
+            },
+            {
+                solution: [[3,4,2,1],[1,2,4,3],[4,3,1,2],[2,1,3,4]],
+                start:    [[3,4,0,1],[1,0,4,0],[0,3,1,2],[2,0,3,4]]
+            },
+            {
+                solution: [[1,3,2,4],[4,2,1,3],[2,4,3,1],[3,1,4,2]],
+                start:    [[1,3,0,4],[4,0,1,3],[2,4,0,0],[0,1,4,2]]
+            },
+            {
+                solution: [[4,2,1,3],[3,1,4,2],[1,3,2,4],[2,4,3,1]],
+                start:    [[4,2,1,0],[3,0,4,2],[1,3,2,0],[0,4,3,1]]
+            }
+        ];
+
+        let currentLevelIndex = 0;
+        let board = [];
+        let fixedCells = [];
+        let selectedSymbol = null;
+        let timerInterval = null;
+        let seconds = 0;
+        let gameActive = false;
+
+        function initPalette() {
+            const palette = document.getElementById('palette');
+            palette.innerHTML = '';
+            
+            for (let i = 1; i <= 4; i++) {
+                const item = document.createElement('div');
+                item.classList.add('palette-item');
+                item.setAttribute('id', `palette-${i}`);
+                item.onclick = () => selectPalette(i);
+                
+                const img = document.createElement('img');
+                img.src = symbols[i];
+                img.alt = `Stroj ${i}`;
+                
+                item.appendChild(img);
+                palette.appendChild(item);
+            }
+            
+            const eraser = document.createElement('div');
+            eraser.classList.add('palette-item', 'eraser');
+            eraser.setAttribute('id', 'palette-0');
+            eraser.innerText = "💥 Smazat";
+            eraser.onclick = () => selectPalette(0);
+            palette.appendChild(eraser);
+        }
+
+        function startGame() {
+            gameActive = true;
+            seconds = 0;
+            clearInterval(timerInterval);
+            document.getElementById('timer').innerText = "Čas: 00:00";
+            
+            timerInterval = setInterval(() => {
+                seconds++;
+                let min = Math.floor(seconds / 60).toString().padStart(2, '0');
+                let sec = (seconds % 60).toString().padStart(2, '0');
+                document.getElementById('timer').innerText = `Čas: ${min}:${sec}`;
+            }, 1000);
+
+            let level = levels[currentLevelIndex];
+            board = JSON.parse(JSON.stringify(level.start));
+            fixedCells = level.start.map(row => row.map(cell => cell !== 0));
+
+            renderBoard();
+            document.getElementById('game-container').style.display = 'flex';
+            document.getElementById('check-btn').style.display = 'inline-block';
+            document.getElementById('msg').innerText = `Závod ${currentLevelIndex + 1} z 10 odstartován!`;
+            selectPalette(1);
+        }
+
+        function renderBoard() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    if (fixedCells[r][c]) {
+                        cell.classList.add('fixed');
+                    }
+                    
+                    if (board[r][c] !== 0) {
+                        const img = document.createElement('img');
+                        img.src = symbols[board[r][c]];
+                        cell.appendChild(img);
+                    }
+                    
+                    cell.onclick = () => cellClick(r, c);
+                    grid.appendChild(cell);
+                }
+            }
+        }
+
+        function selectPalette(symbolNum) {
+            if (!gameActive) return;
+            selectedSymbol = symbolNum;
+            
+            for (let i = 0; i <= 4; i++) {
+                const item = document.getElementById(`palette-${i}`);
+                if (item) {
+                    if (i === symbolNum) {
+                        item.classList.add('selected');
+                    } else {
+                        item.classList.remove('selected');
+                    }
+                }
+            }
+        }
+
+        function cellClick(r, c) {
+            if (!gameActive || fixedCells[r][c] || selectedSymbol === null) return;
+            board[r][c] = selectedSymbol;
+            renderBoard();
+        }
+
+        function checkSolution() {
+            if (!gameActive) return;
+
+            let level = levels[currentLevelIndex];
+            let correct = true;
+
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    if (board[r][c] !== level.solution[r][c]) {
+                        correct = false;
+                        break;
+                    }
+                }
+            }
+
+            if (correct) {
+                clearInterval(timerInterval);
+                
+                if (currentLevelIndex === levels.length - 1) {
+                    gameActive = false;
+                    document.getElementById('msg').innerText = "🏁 VELKOLEPÉ VÍTĚZSTVÍ! Projel jsi všech 10 mini závodů! 🏆🏆🏆";
+                    document.getElementById('check-btn').style.display = 'none';
+                } else {
+                    document.getElementById('msg').innerText = `🏆 Perfektní! Závod ${currentLevelIndex + 1} máš v kapse. Jdeme dál!`;
+                    
+                    setTimeout(() => {
+                        currentLevelIndex++;
+                        startGame();
+                    }, 2500);
+                }
+            } else {
+                document.getElementById('msg').innerText = "❌ Pozor, autíčka jsou špatně seřazená!";
+            }
+        }
+
+        initPalette();
+    </script>
+</body>
+</html>
